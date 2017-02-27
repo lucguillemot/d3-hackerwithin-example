@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<script src="js/jquery-1.11.3.js"></script>
+<script src="js/d3.min.js"></script>
+<script src="js/topojson.js"></script>
+<script src="js/d3.geo.projection.min.js"></script>
+<script src="js/queue.min.js"></script>
+<style type="text/css">
+
+body {
+	background-color: rgba(20, 20, 45, 1);
+	font-family: helvetica;
+	font-size: 30px;
+}
+
+.countries {
+	fill: rgba(20, 50, 84, .5);
+    stroke-width:1px;
+	stroke: rgba(40, 70, 104, 1);
+}
+
+.citycircle, .legendcircle {
+    fill: rgba(255, 255, 255, .3);
+	stroke: rgba(210, 210, 255, 1);
+	cursor: crosshair;
+    stroke-width:.5px;
+}
+
+</style>
+
+<body>
+
+	<script>
+
+	// Layout dimensions, variables and functions 
+	var w = 1220,
+		h = 600,
+		margins = {top: 10, right: 10, bottom: 20, left: 10},
+
+		scale = 180, //projection scale
+		radiusscale = 50;		
+
+	d3.select("body")
+		.append("svg")
+		  .attr("id", "map")
+		  .attr("width", w)
+		  .attr("height", h)
+		    .attr("transform", "translate("+ margins.left +", "+margins.top+")");
+
+	var projection = d3.geo.sinuMollweide()
+					    .center([0, 0])
+					    .scale(scale)
+					    .translate([w / 2, h / 2])
+					    .precision(.1);
+		  
+	var path = d3.geo.path().projection(projection);
+	
+	queue()
+	    .defer(d3.json, "data/countries.json")
+	    .defer(d3.json, "data/cities.json")
+	    .await(ready);
+	
+	function ready(error, countries, cities) {
+		
+		d3.select("#map")
+			.append("g")
+			  .attr("class", "countries")
+			.insert("path", "svg")
+		      .datum(topojson.feature(countries, countries.objects.countries, function(a, b) { return a !== b; }))
+		      .attr("d", path);
+	
+		d3.select("#map")
+			.append("g")
+			  .attr("class", "cities")
+			.selectAll("circle")
+			  .data(cities.features)
+			.enter()
+			  .append("circle")
+			  .attr("class", "citycircle")
+			  .attr("id", function(d){return "circle"+d.properties.geocode})
+			  .attr("transform", function(d) { return "translate(" + path.centroid(d) + ")"; })
+			  .attr("r", function(d) { return radius(d.properties[2010]); })
+			  .on("mouseover", function(d){
+				  d3.selectAll(".citycircle").style("stroke-width", ".5px");
+				  d3.select(this).style("stroke-width","4px");
+			  })
+	};
+
+	var radius = d3.scale.sqrt() //Used to scale the size of proportional circles on the map.
+	    .domain([0, 34250])
+	    .range([0, radiusscale]);
+
+</script>
+</body>
+</html>
